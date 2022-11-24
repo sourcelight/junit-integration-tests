@@ -1,6 +1,8 @@
 package edu.riccardo.studentservice;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -13,21 +15,25 @@ import static org.mockito.Mockito.times;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE;
 
 @SpringBootTest(webEnvironment = NONE)
-public class StudentCacheTest
+public class StudentCacheOnlyMockitoTest
 {
 
-    @Autowired
-    private StudentService studentService;
-
-    @MockBean
+    @Mock
     private StudentRepository studentRepository;
+
+    // @InjectMocks doesn't create the real application spring context for the bean StudentService
+    //it just instantiate the class and set the previous mock created, so the @Cacheable annotation doesn't work
+    // In case I want really test that bean/service I need to @Autowire it so that SpringBootTest actually instantiate it according the spring context
+    // and then inject the repository with the @MockBean annotation.
+    @InjectMocks
+    private StudentService studentService;
 
     @Test
     void getStudentById_forMultipleRequests_isRetrievedFromCache()
     {
         //given
         Long id = 123l;
-        //we mock "studentRepository"
+
         given(studentRepository.findById(id)).willReturn(Optional.of(new Student(id, "Mark")));
 
         //when
@@ -35,7 +41,7 @@ public class StudentCacheTest
         studentService.getStudentById(id);
         studentService.getStudentById(id);
 
-        //then(we test that actually we call the studentRepository only the first time)
+        //then
         then(studentRepository).should(times(1)).findById(id);
     }
 }
